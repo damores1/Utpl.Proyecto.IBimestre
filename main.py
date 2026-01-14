@@ -1,6 +1,5 @@
 """
-API REST con FastAPI
-Incluye personas (local) y cajas (Supabase)
+API REST con FastAPI y Supabase
 """
 
 from fastapi import FastAPI, HTTPException
@@ -8,121 +7,103 @@ from Modelos.persona import Persona
 from Modelos.caja_dto import Caja
 from db.client_supabase import supabase  # Cliente global de Supabase
 
-# BASE DE DATOS LOCAL TEMPORAL (personas)
+# Base de datos temporal para personas
 dbPersona = []
+
+# Descripción completa de la API con Markdown
+
+description = """
+
+## 🎓 API REST de cajas - UTPL
+
+Esta API REST fue desarrollada con **FastAPI** para enseñar a estudiantes los conceptos fundamentales 
+
+de desarrollo de APIs modernas y la interoperabilidad de sistemas.
+
+### 📋 Funcionalidades principales
+
+#### Gestión de cajas
+
+Puedes realizar operaciones CRUD completas:
+
+* **Crear** nuevas cajas con validación de datos
+
+* **Consultar** todas las cajas o buscar por identificación
+
+* **Actualizar** información de cajas existentes
+
+* **Eliminar** registros de cajas
+
+#### Base de Datos
+
+* Integración con **Supabase** como backend
+
+* Validación automática de datos con Pydantic
+
+* Manejo de errores HTTP
+
+### 👨‍🏫 Información del Curso
+
+**Materia:** Interoperabilidad Empresarial 
+
+**Institución:** Universidad Técnica Particular de Loja (UTPL)  
+
+**Email:** daamores2@utpl.edu.ec  
+
+### 🚀 Tecnologías
+
+* FastAPI 
+
+* Python 3.8+
+
+* Supabase
+
+* Pydantic para validación de datos
+
+"""
 
 # Crear la instancia de FastAPI
 app = FastAPI(
-    title="API de Ejemplo UTPL - daamores2@utpl.edu.ec",
-    description="API REST básica para aprender FastAPI en Interoperabilidad de Sistemas",
+    title="API de gestion de cajas",
+    description=description,
     version="1.0.0"
 )
 
 # -------------------------
-# RUTAS GENERALES
+#   CAJAS (CRUD en Supabase)
 # -------------------------
-
-@app.get("/")
-def root():
-    return {"mensaje": "¡Hola Mundo desde FastAPI por David!"}
-
-@app.get("/saludo/{nombre}")
-def saludar(nombre: str):
-    return {"mensaje": f"¡Hola {nombre}! Bienvenido a la API"}
-
-@app.get("/info")
-def informacion():
-    return {
-        "nombre": "API de Ejemplo UTPL",
-        "version": "1.0.0",
-        "descripcion": "Esta es una API básica creada con FastAPI para propósitos educativos"
-    }
-
-# -------------------------
-# PERSONAS (CRUD local)
-# -------------------------
-
-@app.post("/personas", response_model=Persona, tags=["Personas"])
-def crear_persona(persona: Persona):
-    dbPersona.append(persona)
-    return persona
-
-@app.get("/personas", response_model=list[Persona], tags=["Personas"])
-def obtener_personas():
-    return dbPersona
-
-@app.get("/personas/{identificacion}", response_model=Persona, tags=["Personas"])
-def obtener_persona_por_identificacion(identificacion: str):
-    for persona in dbPersona:
-        if persona.identificacion == identificacion:
-            return persona
-    raise HTTPException(status_code=404, detail="Persona no encontrada")
-
-@app.put("/personas/{identificacion}", response_model=Persona, tags=["Personas"])
-def actualizar_persona(identificacion: str, persona_actualizada: Persona):
-    if persona_actualizada.identificacion != identificacion:
-        raise HTTPException(status_code=400, detail="La identificación del cuerpo no coincide con la ruta")
-
-    for idx, persona in enumerate(dbPersona):
-        if persona.identificacion == identificacion:
-            dbPersona[idx] = persona_actualizada
-            return persona_actualizada
-
-    raise HTTPException(status_code=404, detail="Persona no encontrada")
-
-@app.delete("/personas/{identificacion}", response_model=Persona, tags=["Personas"])
-def eliminar_persona(identificacion: str):
-    for idx, persona in enumerate(dbPersona):
-        if persona.identificacion == identificacion:
-            return dbPersona.pop(idx)
-    raise HTTPException(status_code=404, detail="Persona no encontrada")
-
-# -------------------------
-# CAJAS (CRUD con Supabase)
-# -------------------------
-
-
 @app.post("/cajas", response_model=Caja, tags=["Cajas"])
 def crear_caja(caja: Caja):
     response = supabase.table("cajas").insert(caja.dict()).execute()
-    if response.status_code != 201:
-        raise HTTPException(status_code=400, detail="No se pudo crear la caja")
+    if response.data is None:
+        raise HTTPException(status_code=500, detail="No se pudo crear la caja en la base de datos")
     return caja
 
 @app.get("/cajas", response_model=list[Caja], tags=["Cajas"])
 def obtener_cajas():
     response = supabase.table("cajas").select("*").execute()
-    return response.data or []
+    return [Caja(**item) for item in response.data]
 
 @app.get("/cajas/{id}", response_model=Caja, tags=["Cajas"])
 def obtener_caja_por_id(id: str):
-    response = supabase.table("cajas").select("*").eq("id", id).execute()
-    if not response.data:
+    response = supabase.table("cajas").select("*").eq("id", id).single().execute()
+    if response.data is None:
         raise HTTPException(status_code=404, detail="Caja no encontrada")
-    return response.data[0]
+    return Caja(**response.data)
 
 @app.put("/cajas/{id}", response_model=Caja, tags=["Cajas"])
 def actualizar_caja(id: str, caja_actualizada: Caja):
-    # Verificar que el ID del body coincida con el de la ruta
     if caja_actualizada.id != id:
-        raise HTTPException(status_code=400, detail="El ID del cuerpo no coincide con la ruta")
-
-    # Actualizar en Supabase
+        raise HTTPException(status_code=400, detail="El ID de la caja no coincide con la ruta")
     response = supabase.table("cajas").update(caja_actualizada.dict()).eq("id", id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Caja no encontrada")
-    return response.data[0]
+    return caja_actualizada
 
 @app.delete("/cajas/{id}", response_model=Caja, tags=["Cajas"])
 def eliminar_caja(id: str):
-    # Primero obtener la caja para devolverla luego
-    response = supabase.table("cajas").select("*").eq("id", id).execute()
-    if not response.data:
+    response_get = supabase.table("cajas").select("*").eq("id", id).single().execute()
+    if response_get.data is None:
         raise HTTPException(status_code=404, detail="Caja no encontrada")
-    
-    caja_a_eliminar = response.data[0]
-
-    # Eliminar la caja
     supabase.table("cajas").delete().eq("id", id).execute()
-    
-    return caja_a_eliminar
+    return Caja(**response_get.data)
