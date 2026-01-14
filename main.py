@@ -13,14 +13,14 @@ dbCaja = []
 
 # Crear la instancia de FastAPI
 app = FastAPI(
-    title="API de Ejemplo UTPL - fdquinones@utpl.edu.ec",
+    title="API de Ejemplo UTPL - daamores2@utpl.edu.ec",
     description="API REST básica para aprender FastAPI en Interoperabilidad de Sistemas",
     version="1.0.0"
 )
 
 @app.get("/")
 def root():
-    return {"mensaje": "¡Hola Mundo desde FastAPI por Felipe!"}
+    return {"mensaje": "¡Hola Mundo desde FastAPI por David!"}
 
 @app.get("/saludo/{nombre}")
 def saludar(nombre: str):
