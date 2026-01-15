@@ -62,11 +62,17 @@ Puedes realizar operaciones CRUD completas:
 
 """
 
+tags_metadata = {
+    "name": "Cajas",
+    "description": "Operaciones relacionadas con la gestión de cajas"
+}
+
 # Crear la instancia de FastAPI
 app = FastAPI(
     title="API de gestion de cajas",
     description=description,
-    version="1.0.0"
+    version="1.0.0",
+    openapi_tags=[tags_metadata]
 )
 
 # -------------------------
